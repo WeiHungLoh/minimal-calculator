@@ -67,35 +67,33 @@ const computeMinimalCover = (fds: unsplitFD[]): FD[] => {
     })
 
   // Step 3: Remove extra attributes in LHS
-const removeExtraneousFromLHS = (fds: FD[]): FD[] =>
-    fds.map(fd => {
+  const removeExtraneousFromLHS = (fds: FD[]): FD[] => {
+    return fds.map(fd => {
       let lhs = [...fd.left]
       
-      let changed = true
-      while (changed) {
-        changed = false
-      
-        for (let i = 0; i < lhs.length; i++) {
-          // Removes one attribute from LHS
-          const withoutAttr = lhs.filter((_, j) => j !== i)
-          
-          // To remove LHS from being reduced to length 0
-          if (withoutAttr.length === 0) continue
+      // For each attribute in LHS, test if it can be removed
+      for (let i = 0; i < lhs.length; i++) {
+        // Skips if removing this attribute would make LHS empty
+        if (lhs.length === 1) {
+          continue
+        }
 
-          // Clones the original FD and replaces the affected FD with a smaller LHS
-          const testFDs = fds.map(f => f === fd ? { left: withoutAttr, right: fd.right } : f)
-          const closure = computeClosure(withoutAttr, testFDs)
-          // If we are able to derive RHS after removing LHS, we shall remove that attribute from LHS
-          if (closure.has(fd.right)) {
-            lhs = withoutAttr
-            changed = true
-            break
-          }
+        // Removes one attribute from LHS
+        const reducedLHS = lhs.filter((_, j) => j !== i)
+        
+        // Tests if we can derive RHS from reduced LHS using the original FD set
+        const closure = computeClosure(reducedLHS, fds)
+        
+        if (closure.has(fd.right)) {
+          lhs = reducedLHS
+          // Decrement to continue removing LHS from the same attribute
+          i--
         }
       }
       
       return { left: lhs, right: fd.right }
     })
+  }
 
   const step1 = splitRHS(fds)
   const step2 = removeRedundantFDs(step1)
